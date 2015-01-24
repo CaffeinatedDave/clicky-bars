@@ -64,7 +64,7 @@ $tick = Time.now.to_i
 Thread.new do 
   while true do
     while $tick < Time.now.to_i do
-      $bar += ($perSec * ($bar / 10))
+      $bar += $perSec + ($perSec * ($bar / 10))
       if $bar > $maxServerBar 
         $bar = $maxServerBar
       end
