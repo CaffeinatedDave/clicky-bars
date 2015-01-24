@@ -37,11 +37,7 @@
       window.ws.onmessage = function(m) { showMsg(m.data); };
 
       setupLocalCamp();
-
-      $('#steal').click(function() {
-        stealServer();
-        return false;
-      });
+      reconnectActions();
     }
   </script>
 </body>

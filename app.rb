@@ -6,8 +6,9 @@ set :server, 'thin'
 set :bind, '0.0.0.0'
 $sockets = []
 
+$perSec = 1
 $maxServerBar = 200
-$bar = 0
+$bar = 53
 
 def makeUpdateJson
   ret = {}
@@ -32,11 +33,16 @@ get '/' do
       ws.onmessage do |msg|
         warn("received" + msg)
         json = JSON.parse(msg)
-        if json["action"] = "claim"
-          award = $bar
-          $bar = 0
-          ws.send({"message" => "award", "amount" => award}.to_json)
-        end
+        case json["action"] 
+          when "steal"
+            award = $bar
+            $bar = 0
+            ws.send({"message" => "award", "amount" => award}.to_json)
+          when "donate"
+            pure = json["amount"]
+            $perSec += 0.05 * (pure / 100)
+            $maxServerBar += pure / 5
+          end
 
         EM.next_tick do
           send = makeUpdateJson
@@ -58,7 +64,7 @@ $tick = Time.now.to_i
 Thread.new do 
   while true do
     while $tick < Time.now.to_i do
-      $bar += (0.2 * $sockets.count)
+      $bar += ($perSec * ($bar / 10))
       if $bar > $maxServerBar 
         $bar = $maxServerBar
       end

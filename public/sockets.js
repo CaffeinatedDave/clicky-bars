@@ -1,8 +1,27 @@
 var ws;
 var camp = {};
 
-function setupLocalCamp() {
+function reconnectActions() {
+  $('#steal').unbind();
+  $('.donate').unbind();
 
+  $('#steal').click(function() {
+    window.ws.send(JSON.stringify({action: "steal"}));
+    return false;
+  });
+
+  $('.donate').click(function() { 
+    window.ws.send(JSON.stringify({
+      action: "donate",
+      type:   "wood",
+      amount: camp["resource"]["wood"].amount
+    }));
+    amount: camp["resource"]["wood"].amount = 0;
+    redrawCamp();
+  });
+}
+
+function setupLocalCamp() {
   camp["resource"] = {};
   camp["resource"]["stone"] = {max: 0, amount: 0, shown: false};
   camp["resource"]["wood"] = {max: 500, amount: 0, shown: false};
@@ -55,7 +74,7 @@ function redrawCamp() {
     if (r.shown) {
 
       if ($('#'+key+"Container").length == 0) {
-        html = '<div id="'+key+'Container"><div class="progress" style="width:80%; float:left;"><div id="'+key+'LocalBar" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div><p><span id="'+key+'LabelText"></span></p><div style="clear: both;"></div></div>'
+        html = '<div id="'+key+'Container"><div class="progress" style="width:80%; float:left;"><div id="'+key+'LocalBar" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div><p><span id="'+key+'LabelText"></span><button id="'+key+'Donate" class="donate">Donate</button></p><div style="clear: both;"></div></div>';
 
         $('#resources').append(html);
       }
@@ -74,10 +93,7 @@ function redrawCamp() {
   if ($('#resources').children().length > 0) {
     $('#resources').show();
   }
-}
 
-function stealServer() {
-  window.ws.send(JSON.stringify({action: "steal"}));
+  reconnectActions();
 }
-
 
