@@ -27,7 +27,7 @@ class Resource
       @current = 0
     end
 
-    return stolen
+    return stolen.to_i
   end
 
   def donate(amount)

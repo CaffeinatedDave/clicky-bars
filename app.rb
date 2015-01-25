@@ -2,12 +2,14 @@ require 'sinatra'
 require 'sinatra-websocket'
 require 'json'
 require './models/resource'
+require './models/users'
 
 set :server, 'thin'
 set :bind, '0.0.0.0'
 $sockets = []
 
 $resource = []
+$users    = []
 
 $resource << Resource.new("wood", 200, 1, 80)
 
@@ -28,47 +30,70 @@ def makeUpdateJson
   return ret.to_json 
 end
 
+def broadcastMessage(who, msg)
+  send = {
+    "message" => "chat",
+    "who"     => who, 
+    "msg"     => msg 
+  }.to_json
+  $sockets.each do |s|
+    s.send(send)
+  end
+end
+
 get '/' do
   if !request.websocket?
     erb :index
   else
     request.websocket do |ws|
+      me = User.new(Array.new(12){[*"A".."F", *"0".."9"].sample}.join)
+      warn(me.trip + " connected...")
       ws.onopen do |hs|
         warn(hs.to_s)
         $sockets << ws
         setup = makeUpdateJson
         ws.send(setup)
+        broadcastMessage("system", me.trip + " joined the game")
       end
       ws.onmessage do |msg|
-        warn("received" + msg)
+        warn(me.trip + "received" + msg)
         json = JSON.parse(msg)
         type = json["type"]
         case json["action"] 
           when "chat"
-            send = {
-              "message" => "chat",
-              "who" => json["name"],
-              "msg" => json["message"]
-            }.to_json
-            $sockets.each do |s|
-              s.send(send)
+            name = json["name"];
+            if (name == "")
+              name = me.trip;
             end
+            broadcastMessage(name, json["message"])
           when "steal"
-            res = $resource.select{ |r| r.name == type}
-            if res[0] != nil 
-              award = res[0].steal(json["amount"])
-              ws.send({
-                "message" => "award",
-                "type" => type,
-                "amount" => award
-              }.to_json)
+            if me.is_allowed?
+              me.update_allowed
+              res = $resource.select{ |r| r.name == type}
+              if res[0] != nil 
+                award = res[0].steal(json["amount"].to_i)
+                ws.send({
+                  "message" => "award",
+                  "type" => type,
+                  "amount" => award
+                }.to_json)
+                broadcastMessage("system", me.trip + " stole " + award.to_s + " " + type + "!")
+              end
+            else
+              send = {
+                "message" => "chat",
+                "who"     => "system", 
+                "msg"     => "Stop being greedy, you can't steal again until " + me.allowed.to_s 
+              }.to_json
+              ws.send(send)
             end
           when "donate"
-            amount = json["amount"]
+            amount = json["amount"].to_i
             res = $resource.select{ |r| r.name == type}
             if res[0] != nil 
               res[0].donate(amount)
             end
+            broadcastMessage("system", me.trip + " donated " + amount.to_s + " " + type + "!")
           end
 
         EM.next_tick do
@@ -79,8 +104,9 @@ get '/' do
         end
       end
       ws.onclose do
-        warn("websocket closed")
+        warn(me.trip + "websocket closed")
         $sockets.delete(ws)
+        broadcastMessage("system", me.trip + " left the game")
       end
     end
   end

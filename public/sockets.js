@@ -3,9 +3,7 @@ var camp = {};
 var server = {};
 
 var game = {
-  states: {
-    canSteal: true
-  },
+  messages: [],
   buildings: {
     storage: {
       wood: {baseCost: {wood: 100}, factor: 1.25, amount: 500},
@@ -17,21 +15,41 @@ var game = {
   }
 };
 
+function connectSocket() {
+  window.ws = new WebSocket('ws://' + window.location.host + window.location.pathname);
+
+  window.ws.onopen = function() {
+    console.log('websocket opened');
+    setTimeout(function() {checkSocket();}, 2000);
+  };
+  window.ws.onclose = function() {
+    console.log('websocket closed');
+  };
+  window.ws.onmessage = function(m) {
+    showMsg(m.data);
+  };
+}
+
+function checkSocket() {
+  if (window.ws.readyState != window.ws.OPEN) {
+    console.log('uh oh.');
+    connectSocket();
+  }
+
+  setTimeout(function() {checkSocket();}, 2000);
+}
+
 function reconnectActions() {
   $('.steal').unbind();
   $('.donate').unbind();
   $('.build').unbind();
 
   $('.steal').click(function() { 
-    if (game.states.canSteal) {
-      game.states.canSteal = false;
-      window.ws.send(JSON.stringify({
-        action: "steal",
-        amount: 100,
-        type: $(this).data('type')
-      }));
-      setInterval(function() {game.states.canSteal = true;}, 5000)
-    }
+    window.ws.send(JSON.stringify({
+      action: "steal",
+      amount: 100,
+      type: $(this).data('type')
+    }));
     return false;
   });
 
@@ -105,6 +123,16 @@ function showMsg(m) {
   }
 }
 
+function addChat(j) {
+  text = "<p>" + j.who + ": " + j.msg + "</p>";
+  game.messages.unshift(text);
+  game.messages = game.messages.slice(0,9);
+  
+  content = game.messages.slice(0, 9); 
+ 
+  $('#msgs').html(content);
+}
+
 function updateServer(j) {
   users = j.users;
   $('#userCount').html(users);
@@ -136,7 +164,17 @@ function redrawCamp() {
     r = server["resource"][key]
     // Unlike camp, if we know about it, show it.
     if ($('#'+key+"ServerContainer").length == 0) {
-      html = '<div id="'+key+'ServerContainer"><div class="progress" style="width:80%; float:left;"><div id="'+key+'ServerBar" class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div></div><p><span id="'+key+'ServerText"></span><button id="'+key+'Steal" class="steal" data-type="'+key+'">Steal</button></p><div style="clear: both;"></div></div>';
+      html =  '<div id="'+key+'ServerContainer">';
+      html += '  <div class="progress" style="width:70%; float:left;">';
+      html += '    <div id="'+key+'ServerBar" class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">';
+      html += '      <div>'+key+'</div>';
+      html += '    </div>';
+      html += '  </div>';
+      html += '  <p><span id="'+key+'ServerText"></span>';
+      html += '  <button id="'+key+'Steal" class="steal" data-type="'+key+'">Steal</button>';
+      html += '  </p>';
+      html += '  <div style="clear: both;"></div>';
+      html += '</div>';
 
       $('#server').append(html);
     }
@@ -158,8 +196,9 @@ function redrawCamp() {
 
       if ($('#'+key+"Container").length == 0) {
         html =  '<div id="'+key+'Container">';
-        html += '  <div class="progress" style="width:80%; float:left;">';
+        html += '  <div class="progress" style="width:70%; float:left;">';
         html += '    <div id="'+key+'LocalBar" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">';
+        html += '    <div>'+key+'</div>';
         html += '    </div>';
         html += '  </div>';
         html += '  <p><span id="'+key+'LabelText"></span>';
