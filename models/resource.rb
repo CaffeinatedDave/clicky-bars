@@ -19,20 +19,24 @@ class Resource
   end
 
   def steal(amount)
-    if @current > amount
-      stolen = amount
-      @current -= amount
-    else
-      stolen = @current
-      @current = 0
+    if amount > 0
+      if @current > amount
+        stolen = amount
+        @current -= amount
+      else
+        stolen = @current
+        @current = 0
+      end
     end
 
     return stolen.to_i
   end
 
   def donate(amount)
-    @incr += 0.01 * (amount / 100)
-    @max  += amount / 5
+    if amount > 0
+      @incr += 0.01 * (amount / 100)
+      @max  += amount / 5
+    end
   end
 
   # just demo for now...
