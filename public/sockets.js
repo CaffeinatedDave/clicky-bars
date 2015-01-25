@@ -51,7 +51,13 @@ function reconnectActions() {
     if (isNaN(steal)) {
       steal = 100;
     }
-    space = camp.resource[type].max - camp.resource[type].amount;
+
+    if (camp.resource[type] === undefined) {
+      speace = 100
+    } else {
+      space = camp.resource[type].max - camp.resource[type].amount;
+    }
+
     if (space < steal) {
       steal = space;
     }
