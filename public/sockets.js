@@ -16,7 +16,11 @@ var game = {
 };
 
 function connectSocket() {
-  window.ws = new WebSocket('ws://' + window.location.host + window.location.pathname);
+  if ( window.location.protocol == "https:" ) {
+    window.ws = new WebSocket('wss://' + window.location.host + window.location.pathname);
+  } else {
+    window.ws = new WebSocket('ws://' + window.location.host + window.location.pathname);
+  }
 
   window.ws.onopen = function() {
     console.log('websocket opened');
