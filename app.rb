@@ -66,7 +66,8 @@ get '/' do
               broadcastMessage(me.name, json["message"])
             end
           when "steal"
-            if me.is_allowed?
+            time_left = me.is_allowed
+            if (time_left < 1)
               me.update_allowed(json["amount"].to_i)
               res = $resource.select{ |r| r.name == type}
               if res[0] != nil 
@@ -76,13 +77,14 @@ get '/' do
                   "type" => type,
                   "amount" => award
                 }.to_json)
+                me.update_allowed(award)
                 broadcastMessage("system", me.name + " stole " + award.to_s + " " + type + "!")
               end
             else
               send = {
                 "message" => "chat",
                 "who"     => "system", 
-                "msg"     => "Stop being greedy, you can't steal again until " + me.allowed.to_s 
+                "msg"     => "Stop being greedy, you can't steal again for " + time_left.to_s + " seconds" 
               }.to_json
               ws.send(send)
             end
@@ -105,7 +107,7 @@ get '/' do
       ws.onclose do
         warn(me.trip + "websocket closed")
         $sockets.delete(ws)
-        broadcastMessage("system", me.trip + " left the game")
+        broadcastMessage("system", me.name + " left the game")
       end
     end
   end

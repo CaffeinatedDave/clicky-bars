@@ -15,15 +15,11 @@ class User
   end
 
   def update_allowed(amount)
-    @allowed = Time.now + amount/20
+    @allowed = Time.now + 1 + amount/20
   end
 
-  def is_allowed?
-    if Time.now > @allowed
-      return true
-    else
-      return false
-    end
+  def is_allowed
+    @allowed - Time.now
   end
 
   def saveState(thing) 

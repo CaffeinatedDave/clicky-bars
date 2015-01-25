@@ -53,7 +53,7 @@ function reconnectActions() {
     }
 
     if (camp.resource[type] === undefined) {
-      speace = 100
+      space = 100;
     } else {
       space = camp.resource[type].max - camp.resource[type].amount;
     }
@@ -93,14 +93,21 @@ function reconnectActions() {
     cost = building.baseCost;
 
     canBuild = true;
+    totalcost = {};
     // First pass - check we can afford it...
     for (var key in cost) {
       resCost = cost[key] * Math.pow(building.factor, owned);
-      console.log("Action will cost " + resCost + " " + key + ". (Have " + camp.resource[key].amount + ")");
+      totalcost[key] = resCost;
       if (camp.resource[key].amount < resCost) {
         canBuild = false;
       }
     }
+    text = "Building for " + type + " will cost: \r\n";
+    for (var key in totalcost) {
+      text += totalcost[key] + " " + key + " (you have " + camp.resource[key].amount + ")";
+    }
+
+    addChat({who: "system", msg: text});
 
     // Second pass - do it!
     if (canBuild) {
