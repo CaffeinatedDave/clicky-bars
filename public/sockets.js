@@ -45,10 +45,21 @@ function reconnectActions() {
   $('.build').unbind();
 
   $('.steal').click(function() { 
+    type = $(this).data('type');
+    
+    steal = parseInt($('#stealAmount').val());
+    if (isNaN(steal)) {
+      steal = 100;
+    }
+    space = camp.resource[type].max - camp.resource[type].amount;
+    if (space < steal) {
+      steal = space;
+    }
+
     window.ws.send(JSON.stringify({
       action: "steal",
-      amount: 100,
-      type: $(this).data('type')
+      amount: steal,
+      type:   type
     }));
     return false;
   });

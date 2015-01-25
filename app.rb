@@ -13,7 +13,7 @@ $users    = []
 
 $resource << Resource.new("wood", 200, 1, 80)
 
-def makeUpdateJson
+def makeUpdateJson(whoami)
   ret = {}
   ret["message"]  = "update"
   ret["users"] = $sockets.count
@@ -51,7 +51,7 @@ get '/' do
       ws.onopen do |hs|
         warn(hs.to_s)
         $sockets << ws
-        setup = makeUpdateJson
+        setup = makeUpdateJson(me)
         ws.send(setup)
         broadcastMessage("system", me.trip + " joined the game")
       end
@@ -61,11 +61,10 @@ get '/' do
         type = json["type"]
         case json["action"] 
           when "chat"
-            name = json["name"];
-            if (name == "")
-              name = me.trip;
+            me.set_name(json["name"])
+            if json["message"] != ""
+              broadcastMessage(me.name, json["message"])
             end
-            broadcastMessage(name, json["message"])
           when "steal"
             if me.is_allowed?
               me.update_allowed
@@ -77,7 +76,7 @@ get '/' do
                   "type" => type,
                   "amount" => award
                 }.to_json)
-                broadcastMessage("system", me.trip + " stole " + award.to_s + " " + type + "!")
+                broadcastMessage("system", me.name + " stole " + award.to_s + " " + type + "!")
               end
             else
               send = {
@@ -93,11 +92,11 @@ get '/' do
             if res[0] != nil 
               res[0].donate(amount)
             end
-            broadcastMessage("system", me.trip + " donated " + amount.to_s + " " + type + "!")
+            broadcastMessage("system", me.name + " donated " + amount.to_s + " " + type + "!")
           end
 
         EM.next_tick do
-          send = makeUpdateJson
+          send = makeUpdateJson(me)
           $sockets.each do |s|
             s.send(send)
           end
@@ -123,7 +122,7 @@ Thread.new do
     end
 
     EM.next_tick do
-      send = makeUpdateJson
+      send = makeUpdateJson(nil)
       $sockets.each do |s|
         s.send(send)
       end

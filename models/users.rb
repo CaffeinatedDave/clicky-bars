@@ -1,14 +1,21 @@
 class User
-  attr_reader :trip, :name, :allowed
+  attr_reader :trip, :name, :allowed, :state
 
   def initialize(trip)
     @trip    = trip
     @name    = trip
     @allowed = Time.now
+    @state   = {}
   end
 
-  def update_allowed 
-    @allowed = Time.now + 5
+  def set_name(name)
+    if name != ""
+      @name = name
+    end
+  end
+
+  def update_allowed(amount)
+    @allowed = Time.now + amount/20
   end
 
   def is_allowed?
@@ -17,5 +24,8 @@ class User
     else
       return false
     end
+  end
+
+  def saveState(thing) 
   end
 end
