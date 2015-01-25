@@ -39,10 +39,10 @@ class Resource
   def rewards
     case @name
       when "wood"
-        if (@current > 100 && @rewarded == 0)
+        if (@current > 200 && @rewarded == 0)
           @rewarded = 1
           return [Resource.new("stone", 200, 1, 5)]
-        elsif (@current > 400 && @rewarded == 1)
+        elsif (@current > 500 && @rewarded == 1)
           @rewarded = 2
           return [Resource.new("iron", 100, 0.2, 0)]
         end
