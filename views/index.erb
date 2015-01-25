@@ -10,17 +10,9 @@
 
 <body>
   <h1>Interactive Bars!</h1>
+  <p><span id="userCount">0</span> users playing</p>
 
   <div id="server" style="width: 80%; margin: auto; border: 1px solid black">
-    <div class="progress" style="width:80%; float:left;">
-      <div id="serverBar" class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
-      </div>
-    </div>
-    <p><span id="serverText"></span>
-    <button id="steal">Steal</button></p>
-    <div style="clear: both;"></div>
-
-    <p><span id="userCount">0</span> users playing</p>
   </div>
 
   <div id="resources" style="width: 80%; margin: auto; border:1px solid black; margin-top: 10px; display: none;">
@@ -36,7 +28,7 @@
       window.ws.onclose   = function()  { console.log('websocket closed'); }
       window.ws.onmessage = function(m) { showMsg(m.data); };
 
-      setupLocalCamp();
+      setupCamp();
       reconnectActions();
     }
   </script>
