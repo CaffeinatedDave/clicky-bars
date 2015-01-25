@@ -67,7 +67,7 @@ get '/' do
             end
           when "steal"
             if me.is_allowed?
-              me.update_allowed
+              me.update_allowed(json["amount"].to_i)
               res = $resource.select{ |r| r.name == type}
               if res[0] != nil 
                 award = res[0].steal(json["amount"].to_i)
