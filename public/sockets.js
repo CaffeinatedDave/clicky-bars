@@ -3,15 +3,16 @@ var camp = {};
 var server = {};
 
 var game = {
+  name: "",
   messages: [],
   buildings: {
     storage: {
       wood: {baseCost: {wood: 100}, factor: 1.25, amount: 500},
-      stone: {baseCost: {wood: 1000}, factor: 2, amount: 50}
+      stone: {baseCost: {wood: 200}, factor: 1.3, amount: 100},
+      iron: {baseCost: {wood: 100, stone: 300}, factor: 1.1, amount: 50},
+      oil: {baseCost: {iron: 100}, factor: 2, amount: 10}
     },
-    production: {
-      wood: {baseCost: {wood: 100}, factor: 2}
-    }
+    production: {}
   }
 };
 
@@ -24,10 +25,21 @@ function connectSocket() {
 
   window.ws.onopen = function() {
     console.log('websocket opened');
-    setTimeout(function() {checkSocket();}, 2000);
+    $('#reconnectButton').hide();
+    if (game.name != "") {
+      setTimeout(function() {
+        window.ws.send(JSON.stringify({
+          action:  "chat",
+          name:    game.name,
+          message: ""
+        }));
+      }, 2000);
+    }
   };
   window.ws.onclose = function() {
     console.log('websocket closed');
+    // Later I'll do something about the whole non-socket polling..
+    $('#reconnectButton').show();
   };
   window.ws.onmessage = function(m) {
     showMsg(m.data);
@@ -37,10 +49,9 @@ function connectSocket() {
 function checkSocket() {
   if (window.ws.readyState != window.ws.OPEN) {
     console.log('uh oh.');
-    connectSocket();
+  } else {
+    setTimeout(function() {checkSocket();}, 2000);
   }
-
-  setTimeout(function() {checkSocket();}, 2000);
 }
 
 function reconnectActions() {
@@ -108,7 +119,7 @@ function reconnectActions() {
     }
     text = "Building for " + type + " will cost: \r\n";
     for (var key in totalcost) {
-      text += totalcost[key] + " " + key + " (you have " + camp.resource[key].amount + ")";
+      text += totalcost[key] + " " + key + " (you have " + camp.resource[key].amount + ") ";
     }
 
     addChat({who: "system", msg: text});

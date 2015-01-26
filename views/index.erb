@@ -20,7 +20,10 @@
   
       <div id="resources" style="margin: 10px; border:1px solid black; display: none;"></div>
 
-      <p style="margin: 10px"><span id="userCount">0</span> users playing</p>
+      <p style="margin: 10px">
+        <span id="userCount">0</span> users playing
+        <button id="reconnectButton" style="display:none">Reconnect</button>
+      </p>
     </div>
 
     <div class="col-sm-4">
@@ -79,6 +82,7 @@
       $('#setName').submit(function() {
         name = $('#nameBox').val().substring(0, 12);
         if (name == "Enter name") {return false;}
+        game.name = name;
         window.ws.send(JSON.stringify({
           "action":  "chat",
           "name":    name,
@@ -92,7 +96,7 @@
           if (message == "Enter chat message") {return false;}
           window.ws.send(JSON.stringify({
             "action":  "chat",
-            "name":    name,
+            "name":    game.name,
             "message": message
           }));
           $('#messageBox').val("Enter chat message");
@@ -101,6 +105,10 @@
         }); 
 
         return false;
+      });
+
+      $('#reconnectButton').click(function() {
+        connectSocket();
       });
     }
   </script>
