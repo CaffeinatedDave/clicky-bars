@@ -283,10 +283,10 @@ function redrawCamp() {
 
   $('#leadersDiv').html("");
   for (var key in server["users"]) {
-    html =  "<p>";
-    html += server["users"][key].name+" S/D ratio: ";
+    html = server["users"][key].name+" S/D ratio: ";
     ratio = server["users"][key].donated / (server["users"][key].stolen + 0.0001);
     html += ratio.toFixed(4);
+    text = "<p>" + $('<div/>').text(html).html() + "</p>";        
     $('#leadersDiv').prepend(html);
   }
 
