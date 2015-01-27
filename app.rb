@@ -6,17 +6,19 @@ require './models/users'
 
 set :server, 'thin'
 set :bind, '0.0.0.0'
-$sockets  = []
 $to_close = []
+
 $resource = []
 $users    = []
 
 $resource << Resource.new("wood", 200, 1, 80)
 
-def makeUpdateJson(whoami)
+# Keep this here for reasons...
+$last = {}.to_json
+
+def makeServerJson
   ret = {}
   ret["message"]  = "update"
-  ret["users"] = $sockets.count
   ret["resource"] = {}
 
   $resource.each do |r|
@@ -27,7 +29,13 @@ def makeUpdateJson(whoami)
     ret["resource"][r.name]["amount"] = "%d" % r.current
   end
 
-  return ret.to_json 
+  ret["usercount"] = $users.count
+  ret["users"] = {}
+  $users.each do |u|
+    ret["users"][u.trip] = {name: u.name, donated: u.donated, stolen: u.stolen}
+  end
+
+  $last = ret.to_json 
 end
 
 def broadcastMessage(who, msg)
@@ -36,8 +44,8 @@ def broadcastMessage(who, msg)
     "who"     => who, 
     "msg"     => msg 
   }.to_json
-  $sockets.each do |s|
-    s.send(send)
+  $users.each do |u|
+    u.conn.send(send)
   end
 end
 
@@ -46,7 +54,7 @@ get '/' do
     erb :index
   else
     request.websocket do |ws|
-      if $sockets.count > 100
+      if $users.count > 100
         ws.onopen do |hs|
           $to_close << ws
         end
@@ -58,14 +66,14 @@ get '/' do
           $to_close.delete(ws)
         end
       else
-        me = User.new(Array.new(12){[*"A".."F", *"0".."9"].sample}.join)
+        me = User.new(Array.new(12){[*"A".."F", *"0".."9"].sample}.join, ws)
         warn(me.name + " connected...")
         ws.onopen do |hs|
           warn(hs.to_s)
-          $sockets << ws
-          setup = makeUpdateJson(me)
+          $users << me
+          setup = $last
           ws.send(setup)
-          broadcastMessage("system", me.trip + " joined the game")
+          broadcastMessage("Game", me.trip + " joined the game")
         end
         ws.onmessage do |msg|
           warn(me.name + " received " + msg)
@@ -79,8 +87,7 @@ get '/' do
               end
             when "steal"
               time_left = me.is_allowed
-              if (time_left < 1)
-                me.update_allowed(json["amount"].to_i)
+              if (time_left < 0)
                 res = $resource.select{ |r| r.name == type}
                 if res[0] != nil 
                   award = res[0].steal(json["amount"].to_i)
@@ -90,12 +97,12 @@ get '/' do
                     "amount" => award
                   }.to_json)
                   me.update_allowed(award)
-                  broadcastMessage("system", me.name + " stole " + award.to_s + " " + type + "!")
+                  broadcastMessage("Game", me.name + " stole " + award.to_s + " " + type + "!")
                 end
               else
                 send = {
                   "message" => "chat",
-                  "who"     => "system", 
+                  "who"     => "Game", 
                   "msg"     => "You can't steal again for " + time_left.to_s + " seconds. Or donate " + ((time_left * 20).to_i + 1).to_s + " resources"
                 }.to_json
                 ws.send(send)
@@ -107,15 +114,32 @@ get '/' do
                 res[0].donate(amount)
                 me.update_allowed(amount * -1)
               end
-              broadcastMessage("system", me.name + " donated " + amount.to_s + " " + type + "!")
+              broadcastMessage("Game", me.name + " donated " + amount.to_s + " " + type + "!")
+            when "build"
+              location = json["location"]
+              case location
+                when "village"
+                when "camp"
+                end
             end
+          updateAll
         end
         ws.onclose do
           warn(me.name + " websocket closed")
-          $sockets.delete(ws)
-          broadcastMessage("system", me.name + " left the game")
+          $users.delete(me)
+          broadcastMessage("Game", me.name + " left the game")
         end
       end
+    end
+  end
+end
+
+def updateAll
+  makeServerJson
+  EM.next_tick do
+    send = $last
+    $users.each do |u|
+      u.conn.send(send)
     end
   end
 end
@@ -134,12 +158,12 @@ Thread.new do
       end
     end
 
-    EM.next_tick do
-      send = makeUpdateJson(nil)
-      $sockets.each do |s|
-        s.send(send)
-      end
-    end
+#    $user.each do |u|
+#      u.tick
+#    end
+
+    updateAll
+
     sleep 1
   end
 end

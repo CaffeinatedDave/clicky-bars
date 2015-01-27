@@ -27,7 +27,12 @@
     </div>
 
     <div class="col-sm-4">
-      <div id="msgs" style="margin: 10px; border: 1px solid black"></div>
+      <div id="tabs">
+        <a id="messages" href="#">Chat</a>
+        <a id="leaders" href="#">Leaderboard</a>
+      </div>
+      <div id="msgs" style="margin: 10px; border: 1px solid black;"></div>
+      <div id="leadersDiv" style="margin: 10px; border: 1px solid black; display: none;"></div>
       <div id="name" style="margin: 10px: border: 1px solid black;">
         <form id="setName">
         <input id="nameBox" type="text" style="width: 80%" value="Enter name"/><!--
@@ -77,6 +82,15 @@
         if (parseInt(steal) > 0) {
           $('#stealAmount').val(steal)
         }
+      });
+
+      $('#messages').click(function() {
+        $('#leadersDiv').hide();
+        $('#msgs').show();
+      });
+      $('#leaders').click(function() {
+        $('#msgs').hide();
+        $('#leadersDiv').show();
       });
 
       $('#setName').submit(function() {

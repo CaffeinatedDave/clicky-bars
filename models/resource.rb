@@ -34,8 +34,9 @@ class Resource
 
   def donate(amount)
     if amount > 0
-      @incr += 0.01 * (amount / 100)
-      @max  += amount / 5
+      @incr    += 0.01 * (amount / 100)
+      @max     += amount / 5
+      @current += amount / 2
     end
   end
 

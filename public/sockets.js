@@ -173,7 +173,7 @@ function addChat(j) {
 }
 
 function updateServer(j) {
-  users = j.users;
+  users = j.usercount;
   $('#userCount').html(users);
 
   for (var key in j.resource) {
@@ -181,6 +181,24 @@ function updateServer(j) {
     amount = j.resource[key].amount;
     server["resource"][key] = {name: key, max: parseInt(max), amount: parseInt(amount)};
   } 
+
+  server["users"] = [];
+  for (var key in j.users) {
+    server["users"].push({name: j.users[key].name, donated: j.users[key].donated, stolen: j.users[key].stolen});
+  }
+  server["users"].sort(function(a, b) {
+    if (a.stolen == 0 && b.stolen == 0) {
+      return b.donated - a.donated;
+    } else if (a.donated == 0 && b.donated == 0) {
+      return a.stolen - b.stolen;
+    } else if (a.donated == 0) {
+      return -1;
+    } else if (b.donated == 0) {
+      return 1;
+    } else {
+      return (a.donated / a.stolen) - (b.donated / b.stolen);
+    }
+  });
 
   redrawCamp();
 }
@@ -262,6 +280,15 @@ function redrawCamp() {
       $('#'+key+"LabelText").html(current + " / " + total);
     }
   } 
+
+  $('#leadersDiv').html("");
+  for (var key in server["users"]) {
+    html =  "<p>";
+    html += server["users"][key].name+" S/D ratio: ";
+    ratio = server["users"][key].donated / (server["users"][key].stolen + 0.0001);
+    html += ratio.toFixed(4);
+    $('#leadersDiv').prepend(html);
+  }
 
   if ($('#resources').children().length > 0) {
     $('#resources').show();
