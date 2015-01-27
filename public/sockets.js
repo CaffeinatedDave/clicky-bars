@@ -163,7 +163,7 @@ function showMsg(m) {
 }
 
 function addChat(j) {
-  text = "<p>" + j.who + ": " + j.msg + "</p>";
+  text = "<p>" + $('<div/>').text(j.who + ": " + j.msg).html() + "</p>";        
   game.messages.unshift(text);
   game.messages = game.messages.slice(0,9);
   
