@@ -287,7 +287,7 @@ function redrawCamp() {
     ratio = server["users"][key].donated / (server["users"][key].stolen + 0.0001);
     html += ratio.toFixed(4);
     text = "<p>" + $('<div/>').text(html).html() + "</p>";        
-    $('#leadersDiv').prepend(html);
+    $('#leadersDiv').prepend(text);
   }
 
   if ($('#resources').children().length > 0) {
