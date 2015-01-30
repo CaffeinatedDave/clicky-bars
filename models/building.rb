@@ -13,8 +13,7 @@ class Building
   def cost(num_owned) 
     cost = {}
     @baseCost.each do |r|
-      cost["name"]   = r.name 
-      cost["amount"] = r.amount * @factor
+      cost[r["name"]] = (r["amount"] * (@factor ** num_owned)).to_i
     end
     return cost
   end

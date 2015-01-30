@@ -4,16 +4,7 @@ var server = {};
 
 var game = {
   name: "",
-  messages: [],
-  buildings: {
-    storage: {
-      wood: {baseCost: {wood: 100}, factor: 1.25, amount: 500},
-      stone: {baseCost: {wood: 200}, factor: 1.3, amount: 100},
-      iron: {baseCost: {wood: 100, stone: 300}, factor: 1.1, amount: 50},
-      oil: {baseCost: {iron: 100}, factor: 2, amount: 10}
-    },
-    production: {}
-  }
+  messages: []
 };
 
 function connectSocket() {
@@ -56,7 +47,6 @@ function checkSocket() {
 
 function reconnectActions() {
   $('.steal').unbind();
-  $('.donate').unbind();
   $('.build').unbind();
 
   $('.steal').click(function() { 
@@ -85,60 +75,40 @@ function reconnectActions() {
     return false;
   });
 
-  $('.donate').click(function() { 
-    window.ws.send(JSON.stringify({
-      action: "donate",
-      type:   $(this).data('type'),
-      amount: camp.resource[$(this).data('type')].amount
-    }));
-    amount: camp.resource[$(this).data('type')].amount = 0;
-    redrawCamp();
-  });
-
   $('.build').click(function() {
-    // No need to notify the server just yet...
     type = $(this).data('type');
-    building = game.buildings.storage[type];
     
-    if (camp.buildings[type] === undefined) {
-      camp.buildings[type] = 0;
-    }
-    owned = camp.buildings[type];
-
-    cost = building.baseCost;
+    cost = server["shop"][type].cost;
+    console.log(cost)
 
     canBuild = true;
     totalcost = {};
-    // First pass - check we can afford it...
+    // First pass - check we can afford it... We'll trust the client for now...
     for (var key in cost) {
-      resCost = cost[key] * Math.pow(building.factor, owned);
-      totalcost[key] = resCost;
-      if (camp.resource[key].amount < resCost) {
+      if (camp.resource[key].amount < cost[key]) {
         canBuild = false;
       }
     }
-    text = "Building for " + type + " will cost: \r\n";
-    for (var key in totalcost) {
-      text += totalcost[key] + " " + key + " (you have " + camp.resource[key].amount + ") ";
-    }
-
-    addChat({who: "system", msg: text});
 
     // Second pass - do it!
     if (canBuild) {
       for (var key in cost) {
-        resCost = cost[key] * Math.pow(building.factor, owned);
-        camp.resource[key].amount -= parseInt(resCost);
+        camp.resource[key].amount -= parseInt(cost[key]);
       }
-      camp.resource[type].max += building.amount;
-      camp.buildings[type] += 1;
+      window.ws.send(JSON.stringify({
+        action:  "build",
+        name:    type,
+        message: ""
+      }));
+    } else {
+      addChat({who: "Game", msg: "Not enough local resources"});
     }
   });
 }
 
 function setupCamp() {
   camp["resource"] = {};
-  camp["resource"]["wood"] = {max: 500, amount: 0, shown: false};
+  camp["resource"]["wood"] = {max: 50000, amount: 0, shown: false};
   camp["buildings"] = {};
 
   server["resource"] = {};
@@ -200,12 +170,17 @@ function updateServer(j) {
     }
   });
 
+  server["shop"] = [];
+  for (var key in j.shop) {
+    server["shop"][key] = {name: key, cost: j.shop[key]["cost"]};
+  }
+  
   redrawCamp();
 }
 
 function updateLocal(j) {
   if (camp.resource[j.type] === undefined) {
-    camp.resource[j.type] = {max: 100, amount: 0, shown: false};
+    camp.resource[j.type] = {max: 50000, amount: 0, shown: false};
   }
   camp.resource[j.type].shown = true;
   camp.resource[j.type].amount += parseInt(j.amount);
@@ -222,14 +197,16 @@ function redrawCamp() {
     // Unlike camp, if we know about it, show it.
     if ($('#'+key+"ServerContainer").length == 0) {
       html =  '<div id="'+key+'ServerContainer">';
-      html += '  <div class="progress" style="width:70%; float:left;">';
+      html += '  <div class="progress col-sm-8">';
       html += '    <div id="'+key+'ServerBar" class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">';
       html += '      <div>'+key+'</div>';
       html += '    </div>';
       html += '  </div>';
-      html += '  <p><span id="'+key+'ServerText"></span>';
-      html += '  <button id="'+key+'Steal" class="steal" data-type="'+key+'">Steal</button>';
-      html += '  </p>';
+      html += '  <div class="col-sm-4">';
+      html += '    <p><span id="'+key+'ServerText"></span>';
+      html += '    <button id="'+key+'Steal" type="button" class="btn btn-danger steal" data-type="'+key+'">Steal</button>';
+      html += '    </p>';
+      html += '  </div>';
       html += '  <div style="clear: both;"></div>';
       html += '</div>';
 
@@ -253,17 +230,15 @@ function redrawCamp() {
 
       if ($('#'+key+"Container").length == 0) {
         html =  '<div id="'+key+'Container">';
-        html += '  <div class="progress" style="width:70%; float:left;">';
-        html += '    <div id="'+key+'LocalBar" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">';
+        html += '  <div class="progress col-sm-8">';
+        html += '    <div id="'+key+'LocalBar" class="progress-bar progress-bar-primary" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">';
         html += '    <div>'+key+'</div>';
         html += '    </div>';
         html += '  </div>';
-        html += '  <p><span id="'+key+'LabelText"></span>';
-        html += '    <button id="'+key+'Donate" class="donate" data-type="'+key+'" >Donate</button>';
-        if (game.buildings.storage[key] != undefined) {
-          html += '    <button id="'+key+'Build" class="build" data-type="'+key+'" >Build</button>';
-        }
-        html += '  </p>';
+        html += '  <div class="col-sm-4">';
+        html += '    <p><span id="'+key+'LabelText"></span>';
+        html += '    </p>';
+        html += '  </div>';
         html += '  <div style="clear: both;"></div>';
         html += '</div>';
 
@@ -288,6 +263,17 @@ function redrawCamp() {
     html += ratio.toFixed(4);
     text = "<p>" + $('<div/>').text(html).html() + "</p>";        
     $('#leadersDiv').prepend(text);
+  }
+
+  $('#store').html("");
+  for (var key in server["shop"]) {
+    html = "<p>" + key + ": ";
+    for (var res in server["shop"][key].cost) {
+      html += server["shop"][key].cost[res] + " " + res + " ";
+    }
+    html += '<button data-type="'+key+'" type="button" class="build btn btn-success">Buy</button>';
+    html += "</p>";
+    $('#store').append(html);
   }
 
   if ($('#resources').children().length > 0) {

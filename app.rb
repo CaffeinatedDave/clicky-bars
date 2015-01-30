@@ -8,10 +8,29 @@ set :server, 'thin'
 set :bind, '0.0.0.0'
 $to_close = []
 
-$resource = []
-$users    = []
+$resource = {}
+tick = Proc.new { |cur, max, incr| cur + incr + (incr * 5 * (cur * 1.0 / (max * 0.8))) }
+$resource["wood"]  = Resource.new("wood",  200, 3, 100, tick)
+$resource["stone"] = Resource.new("stone", 0,   1, 0,   tick)
+$resource["iron"]  = Resource.new("iron",  0,   0, 0,   tick)
+$resource["oil"]   = Resource.new("oil",   0,   0, 0,   Proc.new { |c, m, i| c } )
 
-$resource << Resource.new("wood", 200, 1, 80)
+wc = Building.new("Woodcutter",  [{'name' => "wood", 'amount' => 50}],                                       1.15, [{'type' => "wood", 'incr' => 3}])
+sh = Building.new("Storage Hut", [{'name' => "wood", 'amount' => 100}],                                      1.2,  [{'type' => "wood", 'max' => 500}, {'type' => "stone", 'max' => 500}, {'type' => 'iron', "max" => 20}])
+qy = Building.new("Quarry",      [{'name' => "wood", 'amount' => 50}, {'name' => "stone", 'amount' => 50}],  1.2,  [{'type' => "stone", 'incr' => 5}])
+im = Building.new("Iron Mine",   [{"name" => "wood", "amount" => 100}, {"name" => "stone", "amount" => 50}], 1.3,  [{'type' => "iron", "incr" => 1}])
+od = Building.new("Oil Drum",    [{"name" => "iron", "amount" => 10}],                                       1,    [{'type' => "oil", "max" => 5}])
+dl = Building.new("Oil Drill",   [{"name" => "iron", "amount" => 100}, {"name" => "wood", "amount" => 150}], 1.2,  [{'type' => "oil", "incr" => 0.5}])
+
+$buildings = {}
+$buildings["Storage Hut"] = {'obj' => sh, 'num' => 0}
+$buildings["Woodcutter"]  = {'obj' => wc, 'num' => 0}
+$buildings["Quarry"]      = {'obj' => qy, 'num' => 0}
+$buildings["Iron Mine"]   = {'obj' => im, 'num' => 0}
+$buildings["Oil Drum"]    = {'obj' => od, 'num' => 0}
+$buildings["Oil Drill"]   = {'obj' => dl, 'num' => 0}
+
+$users    = []
 
 # Keep this here for reasons...
 $last = {}.to_json
@@ -21,12 +40,22 @@ def makeServerJson
   ret["message"]  = "update"
   ret["resource"] = {}
 
-  $resource.each do |r|
-    ret["resource"][r.name] = {}
-    ret["resource"][r.name]["label"]  = r.name
-    ret["resource"][r.name]["incr"]   = r.incr
-    ret["resource"][r.name]["max"]    = r.max
-    ret["resource"][r.name]["amount"] = "%d" % r.current
+  $resource.each do |n, r|
+    if r.max > 0 
+      ret["resource"][r.name] = {}
+      ret["resource"][r.name]["label"]  = r.name
+      ret["resource"][r.name]["incr"]   = r.incr
+      ret["resource"][r.name]["max"]    = r.max
+      ret["resource"][r.name]["amount"] = "%d" % r.current
+    end
+  end
+
+  ret["shop"] = {}
+  $buildings.each do |n, b|
+    ret["shop"][n] = {}
+    ret["shop"][n]["name"] = n
+    ret["shop"][n]["cost"] = b["obj"].cost(b["num"])
+    ret["shop"][n]["amount"] = b["num"]
   end
 
   ret["usercount"] = $users.count
@@ -88,9 +117,9 @@ get '/' do
             when "steal"
               time_left = me.is_allowed
               if (time_left < 0)
-                res = $resource.select{ |r| r.name == type}
-                if res[0] != nil 
-                  award = res[0].steal(json["amount"].to_i)
+                res = $resource[type]
+                if res != nil 
+                  award = res.steal(json["amount"].to_i)
                   ws.send({
                     "message" => "award",
                     "type" => type,
@@ -109,18 +138,27 @@ get '/' do
               end
             when "donate"
               amount = json["amount"].to_i
-              res = $resource.select{ |r| r.name == type}
-              if res[0] != nil 
-                res[0].donate(amount)
+              res = $resource[type]
+              if res != nil 
+                res.donate(amount)
                 me.update_allowed(amount * -1)
               end
               broadcastMessage("Game", me.name + " donated " + amount.to_s + " " + type + "!")
             when "build"
-              location = json["location"]
-              case location
-                when "village"
-                when "camp"
+              b = json["name"]
+              if $buildings[b] != nil 
+                cost = 0
+                $buildings[b]["obj"].cost($buildings[b]["num"]).each do |n, v|
+                  cost -= v.to_i
                 end
+                me.update_allowed(cost)
+                action = $buildings[b]["obj"].action
+                action.each do |r|
+                  $resource[r["type"]].build(r)
+                end
+                $buildings[b]["num"] += 1
+                broadcastMessage("Game", me.name + " built a " + b + "!")
+              end
             end
           updateAll
         end
@@ -150,12 +188,8 @@ Thread.new do
       w.close_connection([101])
     end
 
-    $resource.each do |r|
+    $resource.each do |n, r|
       r.tick
-      new = r.rewards
-      new.each do |n|
-        $resource << n
-      end
     end
 
 #    $user.each do |u|

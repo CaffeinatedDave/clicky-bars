@@ -2,6 +2,7 @@
 <head>
   <title>Bars and stuff</title>
   <link rel="stylesheet" href="/bootstrap.min.css">
+  <link rel="stylesheet" href="/sockets.css">
   <script src="/jquery-2.1.3.min.js"></script>
   <script src="/sockets.js"></script>
   <script type="text/javascript">
@@ -15,14 +16,16 @@
 
     <div class="col-sm-8">
       <div id="server" style="margin: 10px; border: 1px solid black">
-        <input id="stealAmount" type="text" value="Amount to steal"/>
+        <div class="input-group">
+          <input id="stealAmount" type="text" class="form-control" placeholder="Amount to steal"/>
+        </div>
       </div>
   
       <div id="resources" style="margin: 10px; border:1px solid black; display: none;"></div>
 
       <p style="margin: 10px">
         <span id="userCount">0</span> users playing
-        <button id="reconnectButton" style="display:none">Reconnect</button>
+        <button id="reconnectButton" type="button" class="btn btn-primary" style="display:none">Reconnect</button>
       </p>
     </div>
 
@@ -30,18 +33,19 @@
       <div id="tabs">
         <a id="messages" href="#">Chat</a>
         <a id="leaders" href="#">Leaderboard</a>
+        <a id="shop" href="#">Shop</a>
       </div>
       <div id="msgs" style="margin: 10px; border: 1px solid black;"></div>
       <div id="leadersDiv" style="margin: 10px; border: 1px solid black; display: none;"></div>
-      <div id="name" style="margin: 10px: border: 1px solid black;">
-        <form id="setName">
-        <input id="nameBox" type="text" style="width: 80%" value="Enter name" maxlength="12"/><!--
-        --><input type="submit" style="width:20%" value="Name"></form>
-      </div>
-      <div id="chat" style="margin: 10px: border: 1px solid black; display: none;">
-        <form id="sendMessage">
-          <input id="messageBox" type="text" style="width: 80%" value="Enter chat message"/><!--
-        --><input type="submit" id="sendMessage" style="width:20%" value="Chat"/></form>
+      <div id="store" style="margin: 10px; border: 1px solid black; display: none;"></div>
+
+      <div class="col-xs-12">
+        <div class="input-group">
+          <input id="chatInput" type="text" class="form-control" placeholder="Enter Name" />
+          <span class="input-group-btn">
+            <button id="chatSend" class="btn btn-default" type="button">Send</button>
+          </span>
+        </div><!-- /input-group -->
       </div>
     </div>
   </div>
@@ -74,46 +78,53 @@
           $('#messageBox').val("Enter chat message");
         }
       });
-      $('#stealAmount').focus(function() {
-        $('#stealAmount').val("0");
-      });
       $('#stealAmount').blur(function() {
         steal = $('#stealAmount').val();
         if (parseInt(steal) > 0) {
-          $('#stealAmount').val(steal)
+          $('#stealAmount').val(parseInt(steal));
+        } else {
+          $('#stealAmount').val("");
         }
       });
 
       $('#messages').click(function() {
         $('#leadersDiv').hide();
+        $('#store').hide();
         $('#msgs').show();
       });
       $('#leaders').click(function() {
         $('#msgs').hide();
+        $('#store').hide();
         $('#leadersDiv').show();
       });
+      $('#shop').click(function() {
+        $('#leadersDiv').hide();
+        $('#msgs').hide();
+        $('#store').show();
+      });
 
-      $('#setName').submit(function() {
-        name = $('#nameBox').val().substring(0, 12);
-        if (name == "Enter name") {return false;}
+      $('#chatSend').click(function() {
+        name = $('#chatInput').val().substring(0, 12);
+        if (name == "") {return false;}
         game.name = name;
         window.ws.send(JSON.stringify({
           "action":  "chat",
           "name":    name,
           "message": ""
         }));
+        $('#chatInput').val("");
+        $('#chatInput').attr("placeholder", "Enter Chat Message");
 
-        $('#name, #chat').toggle();
-
-        $('#sendMessage').submit(function() {
-          message = $('#messageBox').val();
-          if (message == "Enter chat message") {return false;}
+        $('#chatSend').unbind();
+        $('#chatSend').click(function() {
+          message = $('#chatInput').val();
+          if (message == "") {return false;}
           window.ws.send(JSON.stringify({
             "action":  "chat",
             "name":    game.name,
             "message": message
           }));
-          $('#messageBox').val("Enter chat message");
+          $('#chatInput').val("");
 
           return false;
         }); 
